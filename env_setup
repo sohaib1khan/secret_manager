@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# Create Dockerfile
+cat <<EOF > Dockerfile
+# Use the latest Ubuntu image
+FROM ubuntu:latest
+
+# Set non-interactive mode (this prevents some prompts)
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Update the system and install required packages
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    curl \
+    vim \
+    less \
+    tree \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python libraries using pip 
+RUN pip install cryptography
+RUN pip install Flask
+RUN pip3 install python-dotenv requests
+
+# Copy local script and to the container
+COPY . /app
+
+# Set the working directory
+WORKDIR /app
+
+# Command to keep the container running
+CMD ["tail", "-f", "/dev/null"]
+EOF
+
+# Create docker-compose.yml
+cat <<EOF > docker-compose.yml
+version: '3'
+
+services:
+  my-python-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: secret-manager
+    container_name: secret-manager
+    volumes:
+      - ./:/home
+    working_dir: /app
+EOF
+
+echo "Dockerfile and docker-compose.yml have been created in the current directory."
+
+sleep 10s
+
+echo "Going to launch secret-manager container."
+
+docker compose up -d
+
+docker exec -it secret-manager /bin/bash
+# Check if the last command succeeded
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to launch the python container."
+    exit 1
+fi
+
